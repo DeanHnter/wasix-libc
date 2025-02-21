@@ -23,16 +23,20 @@ jobs:
           pacman -Syu --noconfirm
           pacman -Sy --noconfirm coreutils nodejs npm wget git cmake ninja rsync make wasmer cargo python3
           wget https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz
-          tar -xvf clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz
+          tar -xf clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz
           CLANG_DIR=$(pwd)/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4
-          ln -s "$CLANG_DIR/bin/lld" /usr/bin/lld
-          ln -s "$CLANG_DIR/bin/clang-14" /usr/bin/clang
-          ln -s "$CLANG_DIR/bin/clang++" /usr/bin/clang++
-          ln -s "$CLANG_DIR/bin/llvm-ar" /usr/bin/llvm-ar
-          ln -s "$CLANG_DIR/bin/llvm-nm" /usr/bin/llvm-nm
-          ln -s "$CLANG_DIR/bin/llvm-ranlib" /usr/bin/llvm-ranlib
+          echo "CLANG_DIR=$CLANG_DIR" >> $GITHUB_ENV
+          sudo ln -s "$CLANG_DIR/bin/lld" /usr/bin/lld
+          sudo ln -s "$CLANG_DIR/bin/clang-14" /usr/bin/clang
+          sudo ln -s "$CLANG_DIR/bin/clang++" /usr/bin/clang++
+          sudo ln -s "$CLANG_DIR/bin/llvm-ar" /usr/bin/llvm-ar
+          sudo ln -s "$CLANG_DIR/bin/llvm-nm" /usr/bin/llvm-nm
+          sudo ln -s "$CLANG_DIR/bin/llvm-ranlib" /usr/bin/llvm-ranlib
           echo "$CLANG_DIR/bin" >> $GITHUB_PATH
-          llvm-ar 
+
+      - name: Set LD_LIBRARY_PATH
+        run: |
+          echo "LD_LIBRARY_PATH=$CLANG_DIR/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Log tool versions
         run: |
