@@ -82,7 +82,7 @@ jobs:
       # test entrypoints: `undefined symbol: __main_argc_argv`.
       if: matrix.os == 'ubuntu-latest' && matrix.clang_version != '10.0.0'
 
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v4
       with:
         # Upload the sysroot folder. Give it a name according to the OS it was built for.
         name: ${{ format( 'sysroot-{0}.tgz', matrix.os) }}
