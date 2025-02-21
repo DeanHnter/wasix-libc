@@ -31,7 +31,7 @@ jobs:
           ln -s "$CLANG_DIR/bin/llvm-ar" /usr/bin/llvm-ar
           ln -s "$CLANG_DIR/bin/llvm-nm" /usr/bin/llvm-nm
           ln -s "$CLANG_DIR/bin/llvm-ranlib" /usr/bin/llvm-ranlib
-          export PATH=$CLANG_DIR/bin:$PATH
+          echo "$CLANG_DIR/bin" >> $GITHUB_PATH
 
       - name: Log tool versions
         run: |
