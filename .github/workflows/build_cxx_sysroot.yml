@@ -31,9 +31,9 @@ jobs:
           ln -s "$CLANG_DIR/bin/lld" /usr/bin/lld
           ln -s "$CLANG_DIR/bin/clang-14" /usr/bin/clang
           ln -s "$CLANG_DIR/bin/clang++" /usr/bin/clang++
-          ln -s "$CLANG_DIR/bin/llvm-ar-14" /usr/bin/llvm-ar
-          ln -s "$CLANG_DIR/bin/llvm-nm-14" /usr/bin/llvm-nm
-          ln -s "$CLANG_DIR/bin/llvm-ranlib-14" /usr/bin/llvm-ranlib
+          ln -s "$CLANG_DIR/bin/llvm-ar" /usr/bin/llvm-ar
+          ln -s "$CLANG_DIR/bin/llvm-nm" /usr/bin/llvm-nm
+          ln -s "$CLANG_DIR/bin/llvm-ranlib" /usr/bin/llvm-ranlib
 
       - name: Log tool versions
         run: |
