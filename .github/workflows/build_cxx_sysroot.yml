@@ -26,7 +26,13 @@ jobs:
           FROM archlinux:base-devel
           # Bake in the static dependencies needed for the build
           RUN pacman -Syu --noconfirm && \
-              pacman -Sy --noconfirm coreutils nodejs npm wget git cmake ninja rsync make wasmer cargo python3 && \
+              pacman -Sy --noconfirm coreutils nodejs npm wget git ninja rsync make wasmer cargo python3 && \
+              # Install a newer version of CMake from the official binaries instead of the Arch repo
+              wget https://github.com/Kitware/CMake/releases/download/v3.27.4/cmake-3.27.4-linux-x86_64.tar.gz && \
+              tar -xzvf cmake-3.27.4-linux-x86_64.tar.gz && \
+              mv cmake-3.27.4-linux-x86_64 /usr/local/cmake && \
+              ln -s /usr/local/cmake/bin/cmake /usr/bin/cmake && \
+              # Install clang from LLVM
               wget https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz && \
               tar -xf clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz && \
               mv clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4 /clang && \
