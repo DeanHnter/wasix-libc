@@ -33,11 +33,11 @@ jobs:
               mv cmake-3.27.4-linux-x86_64 /usr/local/cmake && \
               ln -s /usr/local/cmake/bin/cmake /usr/bin/cmake && \
               # Install clang from LLVM
-              wget https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz && \
-              tar -xf clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz && \
-              mv clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4 /clang && \
+              wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.0-rc4/LLVM-19.1.0-rc4-Linux-X64.tar.xz && \
+              tar -xf LLVM-19.1.0-rc4-Linux-X64.tar.xz && \
+              mv LLVM-19.1.0-rc4-Linux-X64 /clang && \
               ln -s /clang/bin/lld /usr/bin/lld && \
-              ln -s /clang/bin/clang-14 /usr/bin/clang && \
+              ln -s /clang/bin/clang-19 /usr/bin/clang && \
               ln -s /clang/bin/clang++ /usr/bin/clang++ && \
               ln -s /clang/bin/llvm-ar /usr/bin/llvm-ar && \
               ln -s /clang/bin/llvm-nm /usr/bin/llvm-nm && \
