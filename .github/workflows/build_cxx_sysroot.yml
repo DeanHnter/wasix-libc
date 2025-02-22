@@ -14,92 +14,73 @@ permissions:
 jobs:
   build_cxx_sysroot:
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:base-devel
-      options: --user root --workdir /
     steps:
-      - name: Update and install dependencies
-        run: |
-          pacman -Syu --noconfirm
-          pacman -Sy --noconfirm coreutils nodejs npm wget git cmake ninja rsync make wasmer cargo python3
-          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz
-          tar -xf clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz
-          CLANG_DIR=$(pwd)/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4
-          echo "CLANG_DIR=$CLANG_DIR" >> $GITHUB_ENV
-          sudo ln -s "$CLANG_DIR/bin/lld" /usr/bin/lld
-          sudo ln -s "$CLANG_DIR/bin/clang-14" /usr/bin/clang
-          sudo ln -s "$CLANG_DIR/bin/clang++" /usr/bin/clang++
-          sudo ln -s "$CLANG_DIR/bin/llvm-ar" /usr/bin/llvm-ar
-          sudo ln -s "$CLANG_DIR/bin/llvm-nm" /usr/bin/llvm-nm
-          sudo ln -s "$CLANG_DIR/bin/llvm-ranlib" /usr/bin/llvm-ranlib
-          echo "$CLANG_DIR/bin" >> $GITHUB_PATH
-
-      - name: Set LD_LIBRARY_PATH
-        run: |
-          echo "LD_LIBRARY_PATH=$CLANG_DIR/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
-      - name: Log tool versions
-        run: |
-          echo git
-          git --version
-          echo "##########################"
-          echo wasmer
-          wasmer -V
-          echo "##########################"
-          echo clang
-          clang -v
-          echo "##########################"
-          echo llvm-ar
-          llvm-ar -V
-          echo "##########################"
-          echo llvm-nm
-          llvm-nm -V
-          echo "##########################"
-          echo nodejs
-          node -v
-          echo "##########################"
-          echo npm
-          npm -v
-
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      - name: Build
+      - name: Generate Dockerfile
         run: |
-          git config --global --add safe.directory $(pwd)
-          ./build32.sh
-          rm -rf /opt/wasix-sysroot
-          cp -r sysroot /opt/wasix-sysroot
-          cp tools/clang-wasix.cmake_toolchain /opt/wasix-sysroot/clang-wasix.cmake_toolchain
+          cat << 'EOF' > Dockerfile.custom
+          FROM archlinux:base-devel
+          # Bake in the static dependencies needed for the build
+          RUN pacman -Syu --noconfirm && \
+              pacman -Sy --noconfirm coreutils nodejs npm wget git cmake ninja rsync make wasmer cargo python3 && \
+              wget https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz && \
+              tar -xf clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz && \
+              mv clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4 /clang && \
+              ln -s /clang/bin/lld /usr/bin/lld && \
+              ln -s /clang/bin/clang-14 /usr/bin/clang && \
+              ln -s /clang/bin/clang++ /usr/bin/clang++ && \
+              ln -s /clang/bin/llvm-ar /usr/bin/llvm-ar && \
+              ln -s /clang/bin/llvm-nm /usr/bin/llvm-nm && \
+              ln -s /clang/bin/llvm-ranlib /usr/bin/llvm-ranlib
+          ENV CLANG_DIR=/clang
+          ENV PATH="/clang/bin:${PATH}"
+          ENV LD_LIBRARY_PATH="/clang/lib:${LD_LIBRARY_PATH}"
+          EOF
 
-      - name: Build and install compiler_rt builtins
-        run: |
-          mkdir -p build-compiler-rt-builtins
-          cd build-compiler-rt-builtins
-          cmake --fresh \
-            -DCOMPILER_RT_BAREMETAL_BUILD=On \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DCOMPILER_RT_OS_DIR=wasm32-wasi \
-            -DCOMPILER_RT_DEFAULT_TARGET_ONLY:BOOL=ON \
-            -DCMAKE_TOOLCHAIN_FILE=/opt/wasix-sysroot/clang-wasix.cmake_toolchain \
-            -DCMAKE_SYSROOT=/opt/wasix-sysroot \
-            -DCMAKE_INSTALL_PREFIX=/opt/wasix-sysroot \
-            ../tools/llvm-project/compiler-rt/lib/builtins
-          cmake --build . --target install --parallel 4
-          llvm-ranlib /opt/wasix-sysroot/lib/wasm32-wasi/libclang_rt.builtins-wasm32.a
+      - name: Build container
+        run: docker build -t custom-image:latest -f Dockerfile.custom .
 
-      - name: Run WASIX tests
-        run: |
-          export CLANG_VERSION=$(clang --version | grep -i "clang version" | sed -n 's/.*version \([0-9.]*\).*/\1/p')
-          echo Detected clang version $CLANG_VERSION
-          mkdir -p /usr/lib/llvm14/lib/clang/$CLANG_VERSION/lib/wasi 
-          cp /opt/wasix-sysroot/lib/wasm32-wasi/libclang_rt.builtins-wasm32.a /usr/lib/llvm14/lib/clang/$CLANG_VERSION/lib/wasi/libclang_rt.builtins-wasm32.a
-          TOOLCHAIN=/opt/wasix-sysroot/clang-wasix.cmake_toolchain ./test/wasix/run_tests.sh
-
-      - name: Upload sysroot
+      - name: Run build
+        run: docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          --user root \
+          custom-image:latest \
+          bash -c "\
+            git config --global --add safe.directory \$(pwd) && \
+            ./build32.sh && \
+            rm -rf /opt/wasix-sysroot && \
+            cp -r sysroot /opt/wasix-sysroot && \
+            cp tools/clang-wasix.cmake_toolchain /opt/wasix-sysroot/clang-wasix.cmake_toolchain && \
+            mkdir -p build-compiler-rt-builtins && \
+            cd build-compiler-rt-builtins && \
+            cmake --fresh -DCOMPILER_RT_BAREMETAL_BUILD=On \
+                 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                 -DCOMPILER_RT_OS_DIR=wasm32-wasi \
+                 -DCOMPILER_RT_DEFAULT_TARGET_ONLY:BOOL=ON \
+                 -DCMAKE_TOOLCHAIN_FILE=/opt/wasix-sysroot/clang-wasix.cmake_toolchain \
+                 -DCMAKE_SYSROOT=/opt/wasix-sysroot \
+                 -DCMAKE_INSTALL_PREFIX=/opt/wasix-sysroot \
+                 ../tools/llvm-project/compiler-rt/lib/builtins && \
+            cmake --build . --target install --parallel 4 && \
+            llvm-ranlib /opt/wasix-sysroot/lib/wasm32-wasi/libclang_rt.builtins-wasm32.a && \
+            export CLANG_VERSION=\$(clang --version | grep -i \"clang version\" | sed -n 's/.*version \\([0-9.]*\\).*/\\1/p') && \
+            mkdir -p /usr/lib/llvm14/lib/clang/\$CLANG_VERSION/lib/wasi && \
+            cp /opt/wasix-sysroot/lib/wasm32-wasi/libclang_rt.builtins-wasm32.a /usr/lib/llvm14/lib/clang/\$CLANG_VERSION/lib/wasi/libclang_rt.builtins-wasm32.a && \
+            TOOLCHAIN=/opt/wasix-sysroot/clang-wasix.cmake_toolchain ./test/wasix/run_tests.sh \
+          "
+      - name: Copy sysroot to workspace
+        run: docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          custom-image:latest \
+          bash -c "cp -r /opt/wasix-sysroot ./sysroot"
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: wasix-sysroot
-          path: /opt/wasix-sysroot
+          path: sysroot
