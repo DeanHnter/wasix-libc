@@ -69,15 +69,22 @@ jobs:
             llvm-ranlib /opt/wasix-sysroot/lib/wasm32-wasi/libclang_rt.builtins-wasm32.a && \
             export CLANG_VERSION=$(clang --version | grep -i "clang version" | sed -n "s/.*version \([0-9.]*\).*/\1/p") && \
             mkdir -p /usr/lib/llvm14/lib/clang/$CLANG_VERSION/lib/wasi && \
-            cp /opt/wasix-sysroot/lib/wasm32-wasi/libclang_rt.builtins-wasm32.a /usr/lib/llvm14/lib/clang/$CLANG_VERSION/lib/wasi/libclang_rt.builtins-wasm32.a && \
-            cd .. && \
-            TOOLCHAIN=/opt/wasix-sysroot/clang-wasix.cmake_toolchain ./test/wasix/run_tests.sh'
+            cp /opt/wasix-sysroot/lib/wasm32-wasi/libclang_rt.builtins-wasm32.a /usr/lib/llvm14/lib/clang/$CLANG_VERSION/lib/wasi/libclang_rt.builtins-wasm32.a'
       - name: Copy sysroot to workspace
         run: docker run --rm \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
           custom-image:latest \
           bash -c "cp -r /opt/wasix-sysroot ./sysroot"
+      - name: Run tests
+        continue-on-error: true
+        run: docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          --user root \
+          custom-image:latest \
+          bash -c 'cp -r sysroot /opt/wasix-sysroot && \
+                   TOOLCHAIN=/opt/wasix-sysroot/clang-wasix.cmake_toolchain ./test/wasix/run_tests.sh'
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
